@@ -30,7 +30,7 @@
     },
     {
         "rule": {
-            "name": "Rule-008",
+            "name": "Rule-000",
             "slug": "po-daily-amount-merchant-decision",
             "description": "Max payout daily txn amount for merchant payee",
             "type": "decision",
