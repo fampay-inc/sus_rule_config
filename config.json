@@ -1,0 +1,73 @@
+[
+    {
+        "rule": {
+            "name": "Rule-008v",
+            "slug": "po-daily-amount-merchant-velocity",
+            "description": "Max payout daily txn amount for merchant payee",
+            "type": "velocity",
+            "activity_type": "txn_final"
+        },
+        "mc": [
+            {
+                "type": "property",
+                "parameter": "type",
+                "operator": "=",
+                "value": "PO"
+            },
+            {
+                "type": "property",
+                "parameter": "status",
+                "operator": "in",
+                "value": ["INITIATED", "SUCCESS"]
+            },
+            {
+                "type": "property",
+                "parameter": "destination__vpa__is_merchant",
+                "operator": "=",
+                "value": true 
+            }
+        ]
+    },
+    {
+        "rule": {
+            "name": "Rule-008",
+            "slug": "po-daily-amount-merchant-decision",
+            "description": "Max payout daily txn amount for merchant payee",
+            "type": "decision",
+            "activity_type": "txn_request"
+        },
+        "mc": [
+            {
+                "type": "property",
+                "parameter": "type",
+                "operator": "=",
+                "value": "PO"
+            },
+            {
+                "type": "property",
+                "parameter": "status",
+                "operator": "=",
+                "value": "INITIATED"
+            },
+            {
+                "type": "property",
+                "parameter": "destination__vpa__is_merchant",
+                "operator": "=",
+                "value": true 
+            },
+            {
+                "type": "rule",
+                "operator": "occurred_within",
+                "value": "24h",
+                "rule_slug": "",
+                "limit": {
+                    "operation": "sum",
+                    "parameter": "amount",
+                    "operator": ">",
+                    "value": 50000
+                },
+                "include_current_activity": true
+            }
+        ]
+    }
+]
