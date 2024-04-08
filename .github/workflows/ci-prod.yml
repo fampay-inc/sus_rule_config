@@ -1,0 +1,84 @@
+name: Deploy config
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:15.3
+        env:
+          POSTGRES_DB: frm
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      clickhouse:
+        image: clickhouse/clickhouse-server
+        env:
+          CLICKHOUSE_DB: frm
+          CLICKHOUSE_USER: frm
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: frm
+        ports:
+          - 8123:8123
+          - 9000:9000
+    env:
+      BASE_URL: "https://frm.eng.fampay.co"
+    steps:
+      - name:
+        if: github.event_name == 'pull_request' && github.base_ref == 'main' && github.head_ref != 'develop'
+        run: |
+          echo "This is a protected branch. Please create a pull request to the develop branch."
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: SSH key setup
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIV_KEY_EVENTS_LIB }}
+
+      - name: Set up Go 1.20
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.20"
+          check-latest: true
+          cache-dependency-path: go.sum
+
+      - name: Install dependencies
+        run: |
+          go version
+          go install golang.org/x/tools/cmd/goimports@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
+          go env -w GOPRIVATE=github.com/fampay-inc/
+          git config --global --add url."git@github.com:".insteadOf "https://github.com/"
+          go mod download
+
+      - name: Setup just command runner
+        uses: extractions/setup-just@v1
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+
+      - name: Run Tests
+        run: just test
+
+      - name: Test Coverage
+        run: just coverage
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage.html
+          path: coverage.html

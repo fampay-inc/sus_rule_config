@@ -1,0 +1,24 @@
+name: Dev deployment
+on:
+  pull_request:
+    branches:
+      - "**"
+    types: [labeled]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dev_deployment:
+    if: contains(github.event.pull_request.labels.*.name, 'dev_testing')
+    runs-on: self-hosted
+    permissions:
+      id-token: write
+      contents: write
+    env:
+      ENVIRONMENT: ci
+      DGN: local
+    steps:
+      - name: Print
+        run: echo 'ELLO world'
